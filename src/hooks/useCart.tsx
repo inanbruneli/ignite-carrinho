@@ -23,28 +23,53 @@ const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
   const [cart, setCart] = useState<Product[]>(() => {
-    // const storagedCart = Buscar dados do localStorage
+    const storagedCart = localStorage.getItem('@RocketShoes:cart');
 
-    // if (storagedCart) {
-    //   return JSON.parse(storagedCart);
-    // }
+    if (storagedCart) {
+      return JSON.parse(storagedCart);
+    }
 
     return [];
   });
 
   const addProduct = async (productId: number) => {
+
     try {
-      // TODO
-    } catch {
-      // TODO
+      if (!hasStock(productId)) {
+        toast.error('Quantidade solicitada fora de estoque');
+        return
+      }
+
+      const { data } = await api.get('/products/' + productId);
+
+      let find = false;
+      const newCart = cart.map(item => {
+
+        if (item.id === productId) {
+          item.amount++;
+          find = true;
+        }
+        return item;
+      })
+
+      if (!find) {
+        data.amount = 1;
+        newCart.push(data);
+      }
+
+      setCart(newCart);
+      localStorage.setItem('@RocketShoes:cart', JSON.stringify(newCart))
+
+    } catch (error) {
+      toast.error('Erro na adição do produto');
     }
   };
 
   const removeProduct = (productId: number) => {
     try {
-      // TODO
+      const newCart = cart.filter(product => product.id != productId);
+      setCart(newCart);
     } catch {
-      // TODO
     }
   };
 
@@ -53,11 +78,29 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     amount,
   }: UpdateProductAmount) => {
     try {
-      // TODO
+      if (amount <= 0) {
+        toast.error('Erro na alteração de quantidade do produto');
+        return;
+      }
+      if (!hasStock(productId)) {
+        toast.error('Quantidade solicitada fora de estoque');
+        return
+      }
+
+      const newCart = cart.map(product => {
+        product.amount = product.id == productId ? amount : product.amount;
+        return product;
+      })
+      setCart(newCart);
     } catch {
       // TODO
     }
   };
+
+  async function hasStock(productId: number) {
+    const hasStock = await api.get('/stock/' + productId).then(result => result);
+    return hasStock.data.amount != 0;
+  }
 
   return (
     <CartContext.Provider
