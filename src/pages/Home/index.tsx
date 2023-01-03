@@ -25,54 +25,49 @@ const Home = (): JSX.Element => {
   const [products, setProducts] = useState<ProductFormatted[]>([]);
   const { addProduct, cart } = useCart();
 
-  const cartItemsAmount: CartItemsAmount = {};
-
-  cart.map((product) => {
-    cartItemsAmount[product.id] = product.amount
-  });
+  const cartItemsAmount = cart.reduce((sumAmount, product) => {
+    sumAmount[product.id] = product.amount
+    return sumAmount
+  }, {} as CartItemsAmount)
 
   useEffect(() => {
     async function loadProducts() {
-      let { data } = await api.get('/products');
-      data = data.map((item: ProductFormatted) => {
-        item.priceFormatted = formatPrice(item.price);
-        return item;
+      const response = await api.get('/products');
+      const productsFormated = response.data.map(function (product: Product) {
+        return { ...product, price: formatPrice(product.price) }
       })
-      setProducts(data);
+      setProducts(productsFormated)
+
     }
 
     loadProducts();
   }, []);
 
   function handleAddProduct(id: number) {
-    addProduct(id);
+    addProduct(id)
   }
 
   return (
     <ProductList>
-      {products.map((product) => {
-        return (
-          <li key={product.id}>
-            <img src={product.image} alt={product.title} />
-            <strong>{product.title}</strong>
-            <span>{product.priceFormatted}</span>
-            <button
-              type="button"
-              data-testid="add-product-button"
-              onClick={() => handleAddProduct(product.id)}
-            >
-              <div data-testid="cart-product-quantity">
-                <MdAddShoppingCart size={16} color="#FFF" />
-                {cartItemsAmount[product.id] || 0}
-              </div>
+      {products.map((product) => (
+        <li key={product.id}>
+          <img src={product.image} alt={product.title} />
+          <strong>{product.title}</strong>
+          <span>{product.price}</span>
+          <button
+            type="button"
+            data-testid="add-product-button"
+            onClick={() => handleAddProduct(product.id)}
+          >
+            <div data-testid="cart-product-quantity">
+              <MdAddShoppingCart size={16} color="#FFF" />
+              {cartItemsAmount[product.id] || 0}
+            </div>
 
-              <span>ADICIONAR AO CARRINHO</span>
-            </button>
-          </li>
-        )
-
-      })}
-
+            <span>ADICIONAR AO CARRINHO</span>
+          </button>
+        </li>
+      ))}
     </ProductList>
   );
 };
